@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>책크업 독서기록 앱</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <style>
+        /* 🎨 컬러 테마 & 기본 설정 */
+        :root { --primary-color: #4A90E2; --secondary-color: #45D09E; --bg-color: #F5F7FA; --card-bg: #FFFFFF; }
+        body { font-family: 'Malgun Gothic', sans-serif; margin: 0; background-color: var(--bg-color); color: #333; padding-bottom: 80px; overflow-x: hidden; }
+        
+        /* 💡 상단 헤더 */
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 20px; background: var(--card-bg); border-bottom: 1px solid #E4E7EB; position: sticky; top: 0; z-index: 100; }
+        .header-left { display: flex; align-items: center; }
+        .character-img { width: 60px; height: 60px; border-radius: 50%; border: 3px solid var(--primary-color); margin-right: 12px; background: #F4F8FD; display: flex; justify-content: center; align-items: center; font-size: 2em; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .header-info h1 { margin: 0; font-size: 1.2em; color: #2C3E50; }
+        .header-info p { margin: 3px 0 0 0; font-size: 0.85em; color: #7F8C8D; font-weight: bold; }
+        .btn-mypage { padding: 8px 15px; background: #2C3E50; color: #FFF; border: none; border-radius: 20px; font-weight: bold; font-size: 0.9em; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.15); transition: 0.2s; }
+
+        /* 💡 본문 영역 */
+        .content-area { padding: 15px; max-width: 800px; margin: 0 auto; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .card { background: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 15px; }
+
+        /* 💡 검색 및 목록 UI */
+        .search-area { display: flex; gap: 8px; margin-bottom: 10px; }
+        .search-input { flex: 1; padding: 10px; border: 2px solid #E4E7EB; border-radius: 8px; font-size: 0.95em; outline: none; }
+        .search-btn { padding: 10px 15px; background: #2C3E50; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        
+        .search-result { display: flex; gap: 15px; padding: 12px; border: 1px solid #F0F2F5; border-radius: 10px; margin-bottom: 10px; align-items: center; }
+        .search-cover { width: 45px; height: 60px; background: #eee; border-radius: 5px; display: flex; justify-content: center; align-items: center; font-size: 1.5em; flex-shrink: 0; }
+        .search-info { flex: 1; }
+        .search-info h4 { margin: 0 0 5px 0; font-size: 0.95em; color: #2C3E50; }
+        .btn-add-book { padding: 6px 12px; background: var(--primary-color); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.85em; }
+
+        .series-header-wrap { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .btn-toggle-list { background: #F4F8FD; border: 1px solid #E1EEFF; color: var(--primary-color); padding: 4px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        .series-list-container { display: none; margin-top: 5px; padding-left: 5px; } 
+        .series-list-container.active { display: block; } 
+
+        /* 💡 책 아이템 & 삭제 버튼 */
+        .book-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #F8F9FA; cursor: pointer; border-radius: 8px; margin-bottom: 4px; background: #FFF; }
+        .book-item.read { background-color: #F4F8FD; border-left: 4px solid var(--primary-color); }
+        .read-count { font-size: 0.8em; padding: 3px 6px; border-radius: 8px; background: #EEE; color: #555; white-space: nowrap; }
+        .read .read-count { background: var(--secondary-color); color: white; }
+        .btn-delete-book { background: none; border: none; font-size: 0.9em; cursor: pointer; padding: 5px; opacity: 0.3; margin-left: 5px; }
+
+        /* 💡 캘린더 */
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .calendar-header button { background: none; border: none; font-size: 1.2em; cursor: pointer; color: var(--primary-color); font-weight: bold; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+        .cal-day-name { font-size: 0.8em; font-weight: bold; color: #7F8C8D; margin-bottom: 5px; }
+        .cal-cell { background: #FFF; min-height: 80px; border: 1px solid #E4E7EB; border-radius: 6px; padding: 4px; display: flex; flex-direction: column; align-items: flex-start; cursor: pointer; }
+        .cal-cell.empty { background: transparent; border: none; cursor: default; }
+        .cal-date-num { font-size: 0.85em; font-weight: bold; color: #2C3E50; margin-bottom: 3px; align-self: flex-end; }
+        .cal-record-pill { width: 100%; font-size: 0.7em; padding: 2px; margin-bottom: 2px; border-radius: 3px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; box-sizing: border-box; }
+        .cal-single { background-color: var(--primary-color); } 
+        .cal-series { background-color: var(--secondary-color); } 
+
+        /* 💡 모달 */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-body { background: white; width: 90%; max-width: 380px; padding: 20px; border-radius: 15px; max-height: 90vh; overflow-y: auto; }
+        .modal-body label { font-size: 0.85em; font-weight: bold; color: #2C3E50; display: block; margin-bottom: 4px; }
+        .modal-body input[type="text"], .modal-body input[type="date"], .modal-body textarea, .modal-body select { width: 100%; margin-bottom: 12px; padding: 10px; border: 1px solid #DDD; border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 0.95em; }
+        
+        .form-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; gap: 10px; }
+        .page-input-area { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+        .page-input-area input[type="number"] { width: 70px; margin: 0; padding: 10px; text-align: center; border: 1px solid #DDD; border-radius: 8px; }
+        .manual-check-label { display: flex; align-items: center; gap: 6px; background: #F4F8FD; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 0.9em; font-weight: bold; color: #2C3E50; border: 1px solid #E1EEFF; margin: 0; height: 39px; box-sizing: border-box; }
+        
+        .modal-btns { display: flex; gap: 10px; margin-top: 5px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.95em; }
+        .btn-save { background: var(--primary-color); color: white; }
+        .btn-close { background: #EEE; color: #333; }
+
+        /* 하단 탭 */
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; border-top: 1px solid #EEE; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 10; }
+        .nav-item { flex: 1; text-align: center; padding: 15px 0; font-size: 0.85em; color: #95A5A6; font-weight: bold; cursor: pointer; }
+        .nav-item.active { color: var(--primary-color); border-top: 3px solid var(--primary-color); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-left">
+            <div class="character-img" id="header-avatar">🥚</div>
+            <div class="header-info">
+                <h1 id="header-title">독서 캘린더</h1>
+                <p id="total-stats">이번 달 완독: 0권 | 레벨 1</p>
+            </div>
+        </div>
+        <button class="btn-mypage" onclick="openMyPage()">마이페이지</button>
+    </div>
+
+    <div class="content-area">
+        <div id="home" class="tab-content active">
+            <div class="card">
+                <div class="calendar-header">
+                    <button onclick="changeMonth(-1)">◀</button>
+                    <h2 id="cal-month-year" style="margin:0; font-size:1.2em;">2026년 4월</h2>
+                    <button onclick="changeMonth(1)">▶</button>
+                </div>
+                <div class="calendar-grid">
+                    <div class="cal-day-name">일</div><div class="cal-day-name">월</div><div class="cal-day-name">화</div>
+                    <div class="cal-day-name">수</div><div class="cal-day-name">목</div><div class="cal-day-name">금</div><div class="cal-day-name">토</div>
+                </div>
+                <div class="calendar-grid" id="calendar-days"></div>
+            </div>
+        </div>
+
+        <div id="library" class="tab-content">
+            <div class="card" style="padding:15px;">
+                <div class="search-area" style="margin:0;">
+                    <input type="text" id="search-input" class="search-input" placeholder="도서명 검색">
+                    <button class="search-btn" onclick="searchBook()">검색</button>
+                </div>
+                <div id="search-result-container"></div>
+            </div>
+            <div class="card" id="my-reading-card">
+                <h2 style="color: var(--primary-color); margin-top:0; font-size:1.1em;" id="my-reading-title">📖 읽고 있는 책</h2>
+                <div id="my-reading-list"></div>
+            </div>
+            <div class="card" id="my-completed-card">
+                <div class="series-header-wrap" style="margin-bottom:0; cursor:pointer;" onclick="toggleList('my-completed-list', this.querySelector('.icon'))">
+                    <h2 style="color: var(--secondary-color); margin:0; font-size:1.1em;" id="my-completed-title">🏆 완독 도서 (0권)</h2>
+                    <span class="icon" style="font-size:1.1em;">🔽</span>
+                </div>
+                <div id="my-completed-list" class="series-list-container"></div>
+            </div>
+        </div>
+
+        <div id="all-series" class="tab-content">
+            <div class="card" style="background:#EAF8F4; border:1px solid #CFF0E5; text-align:center;">
+                <h3 style="margin:0 0 5px 0; font-size:0.9em; color:var(--secondary-color);">오늘의 독서 명언</h3>
+                <div id="daily-quote-text" style="font-weight:bold; color:#2C3E50; margin-bottom:3px;">"책은 마음의 양식이다"</div>
+                <div id="daily-quote-author" style="font-size:0.8em; color:#7F8C8D;">- 작가 -</div>
+            </div>
+            <div id="all-series-list"></div>
+        </div>
+
+        <div id="records" class="tab-content">
+            <button class="btn btn-save" onclick="openRecordModalNew()" style="width:100%; padding:15px; border-radius:12px; font-size:1.05em; margin-bottom:10px;">새로운 독서 기록 남기기</button>
+            <select id="record-filter" onchange="updateRecordsUI()" style="width:100%; padding:12px; border:2px solid #E4E7EB; border-radius:10px; font-weight:bold; color:var(--primary-color); margin-bottom:15px;">
+                <option value="ALL">모든 기록 보기</option>
+            </select>
+            <div id="record-list"></div>
+        </div>
+    </div>
+
+    <div id="record-modal" class="modal-overlay">
+        <div class="modal-body">
+            <h3 id="modal-main-title" style="margin-top:0;">독서 기록 남기기</h3>
+            <label>책 제목</label>
+            <input type="text" id="modal-book-title-input" readonly>
+            <select id="modal-book-title-select" onchange="onSelectBookChange()" style="display:none;"></select>
+            <label>오늘 날짜</label>
+            <input type="date" id="modal-date">
+            <div class="form-row">
+                <div style="flex:1;">
+                    <label>어디까지 읽었나요?</label>
+                    <div class="page-input-area"><input type="number" id="modal-read-page"> <span>/ <span id="modal-total-pages">0</span> 쪽</span></div>
+                </div>
+                <label class="manual-check-label"><input type="checkbox" id="modal-manual-complete"> 완독</label>
+            </div>
+            <label>느낀 점</label>
+            <textarea id="modal-note" rows="2"></textarea>
+            <div class="modal-btns">
+                <button class="btn btn-save" id="btn-save-record" onclick="saveRecord()">기록 저장</button>
+                <button class="btn btn-close" onclick="closeModal('record-modal')">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="daily-detail-modal" class="modal-overlay">
+        <div class="modal-body">
+            <h3 style="margin-top:0; text-align:center;" id="daily-detail-title">독서 기록</h3>
+            <div id="daily-detail-list" style="max-height: 50vh; overflow-y: auto; margin-bottom: 15px;"></div>
+            <button class="btn btn-close" style="width:100%;" onclick="closeModal('daily-detail-modal')">닫기</button>
+        </div>
+    </div>
+
+    <div id="view-record-modal" class="modal-overlay">
+        <div class="modal-body">
+            <h3 style="margin-top:0; color:var(--primary-color);" id="view-title">책 제목</h3>
+            <p style="color:#999; font-size:0.85em; margin-bottom:10px;" id="view-date">2026-04-09</p>
+            <div id="view-note" style="background:#F9F9F9; padding:15px; border-radius:8px; margin-bottom:15px;"></div>
+            <button class="btn btn-close" style="width:100%;" onclick="closeModal('view-record-modal')">닫기</button>
+        </div>
+    </div>
+
+    <div id="mypage-modal" class="modal-overlay">
+        <div class="modal-body">
+            <h2 style="margin-top:0; text-align:center;">나의 독서 정보</h2>
+            <div style="background:#2C3E50; color:white; border-radius:10px; padding:12px; margin-bottom:10px; text-align:center;">
+                <div style="font-size:0.85em;">지난달 성취</div>
+                <div id="mp-prev-level" style="font-size:1.2em;">LV 1 - 0권 완독</div>
+            </div>
+            <div style="background:#F4F8FD; padding:10px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between;">
+                <strong>현재 레벨</strong> <span id="mp-level" style="color:var(--primary-color); font-weight:bold;">LV 1</span>
+            </div>
+            <div style="font-size:0.9em;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>누적 완독</span> <span id="mp-total-comp">0권</span></div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>누적 기록</span> <span id="mp-total-rec">0번</span></div>
+                <hr style="border:0; border-top:1px solid #EEE; margin:10px 0;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>이번 달 완독</span> <span id="mp-month-comp">0권</span></div>
+                <div style="display:flex; justify-content:space-between;"><span>이번 달 기록</span> <span id="mp-month-rec">0번</span></div>
+            </div>
+            <button class="btn btn-close" style="width:100%; margin-top:15px;" onclick="closeModal('mypage-modal')">닫기</button>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="changeTab('home', '독서 캘린더', this)">독서 캘린더</div>
+        <div class="nav-item" onclick="changeTab('library', '내 서재', this)">내 서재</div>
+        <div class="nav-item" onclick="changeTab('all-series', '전집목록', this)">전집목록</div>
+        <div class="nav-item" onclick="changeTab('records', '기록장', this)">기록장</div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 📚 1. 데이터베이스 설정 (요청하신 전집 추가, 검색 기능은 이전 안정 버전 유지)
+        // ==========================================
+        const quotesDB = [
+            { text: "책은 마음의 양식이다.", author: "격언" },
+            { text: "좋은 책을 읽는 것은 훌륭한 사람들과 대화하는 것이다.", author: "데카르트" }
+        ];
+
+        const mockSearchDB = [
+            { title: "올림포스의 신", type: "단행본", cover: "🏛️", pages: 200 },
+            { title: "Why? 우주", type: "Why 시리즈", cover: "🚀", pages: 160 },
+            { title: "1.수가 좋아", type: "개념씨 수학나무", cover: "🔢", pages: 45 }
+        ];
+
+        // 💡 여기에 9종 전집을 새롭게 반영했습니다.
+        const globalSeriesDB = {
+            "개념씨 수학나무": ["1.수가 좋아", "2.모양 나라", "3.더하기 빼기", "4.길이 재기", "5.무게 달기", "6.넓이 비교", "7.입체도형", "8.시계 보기", "9.달력 보기", "10.분수", "11.규칙 찾기", "12.자료 정리", "13.곱하기", "14.나누기", "15.큰 수"],
+            "생활 원리과학": ["1.무엇으로 만들었을까", "2.갑자기 멈추면?", "3.맛있게 보글보글", "4.앗, 떨어진다!", "5.단열이 잘되는 집", "6.동물의 한살이", "7.동물과 환경", "8.곤충", "9.수생 생물", "10.식물의 한살이", "11.광합성", "12.대기오염", "13.수질오염", "14.재활용", "15.생태계", "16.사물인터넷", "17.코딩"],
+            "으랏차차 이야기한국사": ["1.단군과 고조선", "2.주몽과 고구려", "3.온조와 백제", "4.박혁거세와 신라", "5.가야의 쇠와 불", "6.광개토 대왕", "7.장수왕과 평양성", "8.선덕 여왕", "9.삼국 통일의 영웅들", "10.발해를 세운 대조영", "11.왕건과 고려", "12.서희와 거란", "13.강감찬의 외교", "14.이순신과 거북선", "15.세종 대왕과 한글"],
+            "고고세계아이": ["1.미국", "2.영국", "3.프랑스", "4.독일", "5.이탈리아", "6.이집트", "7.중국", "8.일본", "9.인도", "10.브라질", "11.호주", "12.러시아", "13.스페인", "14.그리스", "15.캐나다"],
+            "생활사회탐구": ["1.우리 가족", "2.사이좋은 이웃", "3.우리 동네 기관", "4.교통수단의 발달", "5.다양한 직업", "6.시장과 마트", "7.돈의 쓰임새", "8.민주주의와 선거", "9.우리나라 지도", "10.사계절과 생활", "11.세계의 날씨", "12.환경 보호", "13.전통 문화", "14.세계의 명절", "15.지구촌 이웃"],
+            "이야기꽃할망": ["1.팥죽 할멈과 호랑이", "2.콩쥐 팥쥐", "3.해와 달이 된 오누이", "4.흥부와 놀부", "5.선녀와 나무꾼", "6.우렁 각시", "7.금도끼 은도끼", "8.혹부리 영감", "9.은혜 갚은 두꺼비", "10.토끼와 자라", "11.삼년고개", "12.소가 된 게으름뱅이", "13.도깨비 방망이", "14.젊어지는 샘물", "15.방귀 시합"],
+            "술술이책방": ["1.토끼와 거북이", "2.개미와 베짱이", "3.시골 쥐와 서울 쥐", "4.아기 돼지 삼형제", "5.미운 오리 새끼", "6.백설공주", "7.신데렐라", "8.피노키오", "9.인어공주", "10.장화 신은 고양이", "11.잭과 콩나무", "12.피터팬", "13.알라딘과 요술램프", "14.성냥팔이 소녀", "15.헨젤과 그레텔"],
+            "경제특공대": ["1.돈이 뭐예요?", "2.시장에 가요", "3.용돈을 모아요", "4.은행에 가요", "5.아껴 써요", "6.나눔의 기쁨", "7.물건을 사요", "8.일과 직업", "9.세계의 돈", "10.부자가 될래요", "11.광고의 비밀", "12.가격은 어떻게 정해질까", "13.세금 이야기", "14.무역의 원리", "15.경제 순환"],
+            "WHO 시리즈": ["스티브 잡스", "세종대왕", "마리 퀴리", "이순신", "아인슈타인", "토머스 에디슨", "라이트 형제", "유관순", "헬렌 켈러", "나이팅게일", "빌 게이츠", "마크 저커버그", "일론 머스크", "김연아", "손흥민", "유재석", "안데르센", "베토벤", "모차르트", "워런 버핏"]
+        };
+
+        const bookPagesDB = { "1.수가 좋아": 45, "Why? 우주": 160 };
+
+        function getTotalPages(title) { return bookPagesDB[title] || 50; }
+        function getSeriesName(title) {
+            for (let sName in globalSeriesDB) { if (globalSeriesDB[sName].includes(title)) return sName; }
+            return "단행본";
+        }
+
+        // ==========================================
+        // 💾 2. 로컬 스토리지
+        // ==========================================
+        let myLibrary = JSON.parse(localStorage.getItem('myLibrary')) || { singles: [], series: {} };
+        let dailyRecords = JSON.parse(localStorage.getItem('dailyRecords')) || [];
+        let bookStats = {};
+        let currentCalDate = new Date(); 
+        let editTargetIndex = -1;
+
+        function saveData() {
+            localStorage.setItem('myLibrary', JSON.stringify(myLibrary));
+            localStorage.setItem('dailyRecords', JSON.stringify(dailyRecords));
+        }
+
+        function rebuildBookStats() {
+            bookStats = {};
+            let reversed = [...dailyRecords].reverse();
+            reversed.forEach(r => {
+                if (!bookStats[r.title]) bookStats[r.title] = { count: 0, readPage: 0, series: getSeriesName(r.title) };
+                if (r.page > bookStats[r.title].readPage) bookStats[r.title].readPage = r.page;
+                if (r.isComplete) { bookStats[r.title].count++; bookStats[r.title].readPage = getTotalPages(r.title); }
+            });
+        }
+
+        // ==========================================
+        // ⚙️ 3. 핵심 기능 (이전 안정 버전 검색)
+        // ==========================================
+        function initApp() {
+            const todayIndex = new Date().getDate() % quotesDB.length; 
+            document.getElementById('daily-quote-text').innerText = `"${quotesDB[todayIndex].text}"`;
+            document.getElementById('daily-quote-author').innerText = `- ${quotesDB[todayIndex].author} -`;
+            renderApp();
+        }
+
+        function renderApp() {
+            rebuildBookStats();
+            saveData();
+            renderMyLibrary();
+            renderAllSeries();
+            renderCalendar();
+            updateFilterOptions();
+            updateHeader();
+        }
+
+        function getLevelInfo(completions) {
+            if (completions >= 50) return { lv: 10, emoji: "🐲" };
+            if (completions >= 40) return { lv: 9, emoji: "🐯" };
+            if (completions >= 35) return { lv: 8, emoji: "🦁" };
+            if (completions >= 30) return { lv: 7, emoji: "🦅" };
+            if (completions >= 25) return { lv: 6, emoji: "🦉" };
+            if (completions >= 20) return { lv: 5, emoji: "🕊️" };
+            if (completions >= 15) return { lv: 4, emoji: "🐔" };
+            if (completions >= 10) return { lv: 3, emoji: "🐥" };
+            if (completions >= 5) return { lv: 2, emoji: "🐣" };
+            return { lv: 1, emoji: "🥚" };
+        }
+
+        function searchBook() {
+            const keyword = document.getElementById('search-input').value.trim();
+            const container = document.getElementById('search-result-container');
+            container.innerHTML = ''; 
+            if(keyword === '') return;
+
+            const seriesResults = Object.keys(globalSeriesDB).filter(sName => sName.includes(keyword));
+            const bookResults = mockSearchDB.filter(b => b.title.includes(keyword) || b.type.includes(keyword));
+
+            if (seriesResults.length === 0 && bookResults.length === 0) { container.innerHTML = `<p style="color:red; font-size:0.9em; text-align:center;">검색 결과가 없습니다.</p>`; return; }
+
+            seriesResults.forEach(sName => {
+                container.innerHTML += `<div class="search-result" style="border-color:var(--secondary-color); background:#F2FCF8;"><div class="search-cover">📚</div><div class="search-info"><h4>${sName} (전집)</h4></div><button class="btn-add-book" style="background:var(--secondary-color);" onclick="addSeriesToLibrary('${sName}')">추가</button></div>`;
+            });
+            bookResults.forEach(book => {
+                bookPagesDB[book.title] = book.pages; 
+                container.innerHTML += `<div class="search-result"><div class="search-cover">${book.cover}</div><div class="search-info"><h4>${book.title}</h4></div><button class="btn-add-book" onclick="addBookToLibrary('${book.title}', '${book.type}')">추가</button></div>`;
+            });
+        }
+
+        function addBookToLibrary(title, type) {
+            if (type === "단행본") { if(!myLibrary.singles.includes(title)) myLibrary.singles.push(title); }
+            else { if(!myLibrary.series[type]) myLibrary.series[type] = []; if(!myLibrary.series[type].includes(title)) myLibrary.series[type].push(title); }
+            document.getElementById('search-input').value = '';
+            document.getElementById('search-result-container').innerHTML = '';
+            renderApp();
+            alert(`'${title}' 추가 완료!`);
+        }
+
+        function addSeriesToLibrary(sName) {
+            if(!myLibrary.series[sName]) myLibrary.series[sName] = [];
+            globalSeriesDB[sName].forEach(t => { if(!myLibrary.series[sName].includes(t)) myLibrary.series[sName].push(t); });
+            document.getElementById('search-input').value = '';
+            document.getElementById('search-result-container').innerHTML = '';
+            renderApp();
+            alert(`전집 전체 추가 완료!`); 
+        }
+
+        function removeBookFromLibrary(event, title, seriesName) {
+            event.stopPropagation();
+            if(confirm(`'${title}' 도서를 내 서재에서 삭제할까요?`)) {
+                if(seriesName === '단행본') { myLibrary.singles = myLibrary.singles.filter(t => t !== title); } 
+                else { myLibrary.series[seriesName] = myLibrary.series[seriesName].filter(t => t !== title); }
+                renderApp();
+            }
+        }
+
+        function toggleList(listId, iconElement) {
+            const list = document.getElementById(listId);
+            if (list.classList.contains('active')) { list.classList.remove('active'); iconElement.innerText = '🔽'; }
+            else { list.classList.add('active'); iconElement.innerText = '🔼'; }
+        }
+
+        function createBookItemHTML(title, seriesName) {
+            const totalPages = getTotalPages(title);
+            const stat = bookStats[title] || { count: 0, readPage: 0 };
+            const isRead = stat.count > 0;
+            const statusClass = isRead ? "read" : "";
+            let statusHTML = isRead ? `<span class="read-count">⭐ 완독</span>` : (stat.readPage > 0 ? `<span class="read-count">${stat.readPage}/${totalPages} 쪽</span>` : `<span class="read-count">안 읽음</span>`);
+
+            return `
+            <div class="book-item ${statusClass}">
+                <div style="flex:1;" onclick="openModal('${title}', '${seriesName}')"><span class="book-title">${title}</span></div>
+                <div style="display:flex; align-items:center; gap:5px;">
+                    <div onclick="openModal('${title}', '${seriesName}')">${statusHTML}</div>
+                    <button class="btn-delete-book" onclick="removeBookFromLibrary(event, '${title}', '${seriesName}')">❌</button>
+                </div>
+            </div>`;
+        }
+
+        function renderMyLibrary() {
+            let readingSingles = []; let completedSingles = [];
+            let readingSeries = {}; let completedSeries = {};
+            let completedCount = 0; let readingCount = 0;
+
+            myLibrary.singles.forEach(title => {
+                if (bookStats[title] && bookStats[title].count > 0) { completedSingles.push(title); completedCount++; }
+                else { readingSingles.push(title); readingCount++; }
+            });
+
+            for (let sName in myLibrary.series) {
+                myLibrary.series[sName].forEach(title => {
+                    if (bookStats[title] && bookStats[title].count > 0) {
+                        if (!completedSeries[sName]) completedSeries[sName] = [];
+                        completedSeries[sName].push(title); completedCount++;
+                    } else {
+                        if (!readingSeries[sName]) readingSeries[sName] = [];
+                        readingSeries[sName].push(title); readingCount++;
+                    }
+                });
+            }
+
+            let readingHtml = ''; let sIndex = 0;
+            if (readingSingles.length > 0) {
+                let listId = 'my-lib-read-singles';
+                readingHtml += `<div><div class="series-header-wrap"><strong style="font-size:0.95em;">단행본</strong><button class="btn-toggle-list" onclick="toggleList('${listId}', this.querySelector('.icon'))">목록 <span class="icon">🔼</span></button></div><div id="${listId}" class="series-list-container active">${readingSingles.map(t => createBookItemHTML(t, '단행본')).join('')}</div></div>`;
+            }
+            for (let sName in readingSeries) {
+                let listId = 'my-lib-read-series-' + sIndex++;
+                readingHtml += `<div style="margin-top:10px;"><div class="series-header-wrap"><strong style="font-size:0.95em;">${sName}</strong><button class="btn-toggle-list" onclick="toggleList('${listId}', this.querySelector('.icon'))">목록 <span class="icon">🔼</span></button></div><div id="${listId}" class="series-list-container active">${readingSeries[sName].map(t => createBookItemHTML(t, sName)).join('')}</div></div>`;
+            }
+            
+            document.getElementById('my-reading-list').innerHTML = readingHtml || '<p style="color:#999; font-size:0.85em; text-align:center;">읽고 있는 책이 없습니다.</p>';
+            document.getElementById('my-reading-title').innerText = `📖 읽고 있는 책 (${readingCount}권)`;
+
+            let completedHtml = '';
+            if (completedSingles.length > 0) {
+                let listId = 'my-lib-comp-singles';
+                completedHtml += `<div><div class="series-header-wrap"><strong style="font-size:0.95em;">단행본</strong><button class="btn-toggle-list" onclick="toggleList('${listId}', this.querySelector('.icon'))">목록 <span class="icon">🔼</span></button></div><div id="${listId}" class="series-list-container active">${completedSingles.map(t => createBookItemHTML(t, '단행본')).join('')}</div></div>`;
+            }
+            sIndex = 0;
+            for (let sName in completedSeries) {
+                let listId = 'my-lib-comp-series-' + sIndex++;
+                completedHtml += `<div style="margin-top:10px;"><div class="series-header-wrap"><strong style="font-size:0.95em;">${sName}</strong><button class="btn-toggle-list" onclick="toggleList('${listId}', this.querySelector('.icon'))">목록 <span class="icon">🔼</span></button></div><div id="${listId}" class="series-list-container active">${completedSeries[sName].map(t => createBookItemHTML(t, sName)).join('')}</div></div>`;
+            }
+            
+            document.getElementById('my-completed-list').innerHTML = completedHtml || '<p style="color:#999; font-size:0.85em; text-align:center; margin-top:10px;">아직 완독한 책이 없습니다.</p>';
+            document.getElementById('my-completed-title').innerText = `🏆 완독 도서 (${completedCount}권)`;
+        }
+
+        function renderAllSeries() {
+            const container = document.getElementById('all-series-list');
+            container.innerHTML = '';
+            let sIndex = 0;
+            for (let sName in globalSeriesDB) {
+                let totalBooks = globalSeriesDB[sName].length;
+                let readBooks = globalSeriesDB[sName].filter(t => bookStats[t] && bookStats[t].count > 0).length;
+                let listId = 'all-series-list-' + sIndex++;
+                container.innerHTML += `<div class="card" style="border-top:3px solid var(--secondary-color);"><div class="series-header-wrap"><strong style="font-size:1em;">${sName}</strong><button class="btn-toggle-list" onclick="toggleList('${listId}', this.querySelector('.icon'))">목록 <span class="icon">🔽</span></button></div><div style="font-size:0.8em; margin-bottom:5px;">진행률: <span style="color:var(--secondary-color); font-weight:bold;">${readBooks}/${totalBooks}권</span></div><div id="${listId}" class="series-list-container">${globalSeriesDB[sName].map(t => createBookItemHTML(t, sName)).join('')}</div></div>`;
+            }
+        }
+
+        function changeMonth(dir) { currentCalDate.setMonth(currentCalDate.getMonth() + dir); renderCalendar(); }
+
+        function renderCalendar() {
+            const year = currentCalDate.getFullYear();
+            const month = currentCalDate.getMonth();
+            document.getElementById('cal-month-year').innerText = `${year}년 ${month + 1}월`;
+
+            const firstDay = new Date(year, month, 1).getDay(); 
+            const daysInMonth = new Date(year, month + 1, 0).getDate(); 
+
+            let calHtml = '';
+            for (let i = 0; i < firstDay; i++) { calHtml += `<div class="cal-cell empty"></div>`; }
+            
+            for (let i = 1; i <= daysInMonth; i++) {
+                let dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                let dayRecords = dailyRecords.filter(r => r.date === dateStr);
+                
+                let pillsHtml = '';
+                dayRecords.slice(0, 3).forEach(r => {
+                    let isSingle = myLibrary.singles.includes(r.title);
+                    pillsHtml += `<div class="cal-record-pill ${isSingle ? 'cal-single' : 'cal-series'}">${r.title}</div>`;
+                });
+                if (dayRecords.length > 3) { pillsHtml += `<div class="cal-record-pill cal-more">+${dayRecords.length - 3} 더보기</div>`; }
+
+                calHtml += `<div class="cal-cell" onclick="openDailyDetail('${dateStr}')"><div class="cal-date-num">${i}</div>${pillsHtml}</div>`;
+            }
+            document.getElementById('calendar-days').innerHTML = calHtml;
+        }
+
+        function updateFilterOptions() {
+            const filterSelect = document.getElementById('record-filter');
+            const currentVal = filterSelect.value;
+            const uniqueTitles = [...new Set(dailyRecords.map(r => r.title))];
+            
+            let optionsHtml = `<option value="ALL">모든 기록 보기</option>`;
+            uniqueTitles.forEach(title => { optionsHtml += `<option value="${title}">${title}</option>`; });
+            filterSelect.innerHTML = optionsHtml;
+            if(uniqueTitles.includes(currentVal)) filterSelect.value = currentVal;
+            updateRecordsUI();
+        }
+
+        function updateRecordsUI() {
+            const filterVal = document.getElementById('record-filter').value;
+            const container = document.getElementById('record-list');
+            let filtered = filterVal !== 'ALL' ? dailyRecords.filter(r => r.title === filterVal) : dailyRecords;
+
+            if(filtered.length === 0) { container.innerHTML = '<p style="text-align:center; font-size:0.9em; color:#777;">해당 기록이 없습니다.</p>'; } 
+            else {
+                container.innerHTML = filtered.map((r) => {
+                    let realIndex = dailyRecords.findIndex(dr => dr === r);
+                    let prefix = r.isComplete ? '[⭐완독]' : `[${r.page}쪽]`;
+                    return `
+                    <div class="card" style="border-left: 4px solid var(--primary-color); position:relative;">
+                        <div style="position:absolute; top:10px; right:10px; display:flex; gap:5px;">
+                            <button style="background:#F0F2F5; border:none; padding:4px 8px; border-radius:5px; font-size:0.75em; cursor:pointer;" onclick="editRecord(${realIndex})">수정</button>
+                            <button style="background:#FEECEB; color:#E74C3C; border:none; padding:4px 8px; border-radius:5px; font-size:0.75em; cursor:pointer;" onclick="deleteRecord(${realIndex})">삭제</button>
+                        </div>
+                        <strong style="display:block; margin-right:80px; font-size:0.95em;">[${r.date}] ${r.title}</strong>
+                        <p style="margin: 8px 0 0 0; font-size: 0.9em; line-height: 1.4;">${prefix} ${r.note}</p>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        function deleteRecord(index) {
+            if(confirm("이 기록을 삭제할까요?")) { dailyRecords.splice(index, 1); renderApp(); }
+        }
+
+        function editRecord(index) {
+            const r = dailyRecords[index];
+            editTargetIndex = index; 
+            document.getElementById('modal-main-title').innerText = "기록 수정하기";
+            document.getElementById('btn-save-record').innerText = "수정 완료";
+
+            document.getElementById('modal-book-title-input').value = r.title;
+            document.getElementById('modal-book-title-input').style.display = 'block';
+            document.getElementById('modal-book-title-select').style.display = 'none';
+            
+            document.getElementById('modal-date').value = r.date;
+            document.getElementById('modal-read-page').value = r.page;
+            document.getElementById('modal-total-pages').innerText = getTotalPages(r.title);
+            document.getElementById('modal-manual-complete').checked = r.isComplete;
+            document.getElementById('modal-note').value = r.note;
+            
+            window.currentActiveBook = { title: r.title, series: getSeriesName(r.title) };
+            document.getElementById('record-modal').style.display = 'flex';
+        }
+
+        function openMyPage() {
+            const now = new Date(); 
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth() + 1;
+            let prevYear = currentYear; let prevMonth = currentMonth - 1;
+            if (prevMonth === 0) { prevMonth = 12; prevYear--; }
+
+            const thisMonStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+            const prevMonStr = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
+
+            const thisRecs = dailyRecords.filter(r => r.date.startsWith(thisMonStr));
+            const thisComps = thisRecs.filter(r => r.isComplete).length;
+            const thisUniq = new Set(thisRecs.filter(r => r.isComplete).map(r => r.title)).size;
+            
+            const prevComps = dailyRecords.filter(r => r.date.startsWith(prevMonStr) && r.isComplete).length;
+            const totalComps = Object.values(bookStats).reduce((sum, item) => sum + item.count, 0);
+            const totalUniq = Object.values(bookStats).filter(item => item.count > 0).length;
+
+            let thisLv = getLevelInfo(thisComps); let prevLv = getLevelInfo(prevComps);
+
+            document.getElementById('mp-prev-level').innerText = `LV ${prevLv.lv} - ${prevComps}권 완독`;
+            document.getElementById('mp-level').innerText = `LV ${thisLv.lv}`;
+            
+            document.getElementById('mp-total-comp').innerHTML = `${totalUniq}권`;
+            document.getElementById('mp-total-rec').innerText = `${dailyRecords.length}번`;
+            document.getElementById('mp-month-comp').innerHTML = `${thisUniq}권`;
+            document.getElementById('mp-month-rec').innerText = `${thisRecs.length}번`;
+
+            document.getElementById('mypage-modal').style.display = 'flex';
+        }
+
+        function openDailyDetail(dateStr) {
+            let dayRecords = dailyRecords.filter(r => r.date === dateStr);
+            if (dayRecords.length === 0) return; 
+
+            document.getElementById('daily-detail-title').innerText = `${dateStr} 기록`;
+            let listHtml = dayRecords.map((r) => {
+                let realIndex = dailyRecords.findIndex(dr => dr === r);
+                let prefix = r.isComplete ? '[⭐완독]' : `[${r.page}쪽]`;
+                return `<div class="card" style="padding:12px; margin-bottom:8px; cursor:pointer; border-left: 3px solid var(--primary-color);" onclick="openViewModal(${realIndex}); closeModal('daily-detail-modal');"><strong style="font-size:0.95em;">${r.title}</strong><p style="margin: 4px 0 0 0; font-size: 0.85em; color: #555;">${prefix} ${r.note}</p></div>`;
+            }).join('');
+            
+            document.getElementById('daily-detail-list').innerHTML = listHtml;
+            document.getElementById('daily-detail-modal').style.display = 'flex';
+        }
+
+        function openRecordModalNew() {
+            editTargetIndex = -1; 
+            document.getElementById('modal-main-title').innerText = "독서 기록 남기기";
+            document.getElementById('btn-save-record').innerText = "기록 저장";
+
+            let unreadBooks = [];
+            myLibrary.singles.forEach(t => { if(!bookStats[t] || bookStats[t].count === 0) unreadBooks.push({title: t, series: '단행본'}); });
+            for(let sName in myLibrary.series) {
+                myLibrary.series[sName].forEach(t => { if(!bookStats[t] || bookStats[t].count === 0) unreadBooks.push({title: t, series: sName}); });
+            }
+
+            if(unreadBooks.length === 0) { alert("내 서재에 읽고 있는 책이 없습니다. 책을 검색해서 추가해주세요!"); return; }
+
+            const selectEl = document.getElementById('modal-book-title-select');
+            let options = '<option value="">선택하세요</option>';
+            unreadBooks.forEach(b => { options += `<option value="${b.title}" data-type="${b.series}">${b.title}</option>`; });
+            selectEl.innerHTML = options;
+
+            document.getElementById('modal-book-title-input').style.display = 'none';
+            selectEl.style.display = 'block'; selectEl.value = ''; 
+            document.getElementById('modal-date').value = new Date().toISOString().substring(0, 10);
+            document.getElementById('modal-read-page').value = '';
+            document.getElementById('modal-total-pages').innerText = 0;
+            document.getElementById('modal-manual-complete').checked = false; 
+            document.getElementById('modal-note').value = '';
+            
+            document.getElementById('record-modal').style.display = 'flex';
+            window.currentActiveBook = null; 
+        }
+
+        function onSelectBookChange() {
+            const selectEl = document.getElementById('modal-book-title-select');
+            const title = selectEl.value;
+            if(!title) { document.getElementById('modal-read-page').value = ''; document.getElementById('modal-total-pages').innerText = 0; return; }
+            
+            const series = selectEl.options[selectEl.selectedIndex].getAttribute('data-type');
+            window.currentActiveBook = { title, series };
+            
+            const totalPages = getTotalPages(title);
+            const prevPage = bookStats[title] ? bookStats[title].readPage : 0;
+            let defaultPage = prevPage === 0 ? '' : prevPage + 1;
+            if (defaultPage > totalPages) defaultPage = totalPages;
+
+            document.getElementById('modal-read-page').value = defaultPage;
+            document.getElementById('modal-total-pages').innerText = totalPages;
+        }
+
+        function openModal(title, series) {
+            editTargetIndex = -1; 
+            document.getElementById('modal-main-title').innerText = "독서 기록 남기기";
+            document.getElementById('btn-save-record').innerText = "기록 저장";
+
+            document.getElementById('modal-book-title-input').value = title;
+            document.getElementById('modal-book-title-input').style.display = 'block';
+            document.getElementById('modal-book-title-select').style.display = 'none';
+
+            const totalPages = getTotalPages(title);
+            const prevPage = bookStats[title] ? bookStats[title].readPage : 0;
+            let defaultPage = prevPage === 0 ? '' : prevPage + 1; 
+            if (defaultPage > totalPages) defaultPage = totalPages;
+            
+            document.getElementById('modal-date').value = new Date().toISOString().substring(0, 10);
+            document.getElementById('modal-read-page').value = defaultPage;
+            document.getElementById('modal-total-pages').innerText = totalPages;
+            document.getElementById('modal-manual-complete').checked = false; 
+            document.getElementById('modal-note').value = '';
+            document.getElementById('record-modal').style.display = 'flex';
+            window.currentActiveBook = { title, series };
+        }
+
+        function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+
+        function openViewModal(index) {
+            const record = dailyRecords[index];
+            document.getElementById('view-title').innerText = record.title;
+            document.getElementById('view-date').innerText = record.date;
+            document.getElementById('view-note').innerText = (record.isComplete ? '[⭐완독] ' : `[${record.page}쪽] `) + record.note;
+            document.getElementById('view-record-modal').style.display = 'flex';
+        }
+
+        function saveRecord() {
+            let title = document.getElementById('modal-book-title-select').style.display === 'block' ? document.getElementById('modal-book-title-select').value : document.getElementById('modal-book-title-input').value;
+            if(!title) { alert("책을 선택해주세요!"); return; }
+
+            const date = document.getElementById('modal-date').value;
+            const note = document.getElementById('modal-note').value.trim();
+            const inputPageRaw = document.getElementById('modal-read-page').value;
+            
+            if (inputPageRaw === "" || parseInt(inputPageRaw) <= 0) { alert("1쪽 이상 입력해주세요."); return; }
+            const inputPage = parseInt(inputPageRaw);
+            if (note === "") { alert("느낀 점을 입력해주세요."); return; }
+
+            const totalPage = parseInt(document.getElementById('modal-total-pages').innerText);
+            const isManualChecked = document.getElementById('modal-manual-complete').checked;
+
+            let isCompletingNow = false;
+            if (inputPage >= totalPage || isManualChecked) {
+                let previouslyCompleted = editTargetIndex > -1 ? dailyRecords[editTargetIndex].isComplete : false;
+                if(!previouslyCompleted) {
+                    isCompletingNow = confirm("정말 다 읽었나요? 완독으로 표시할까요?");
+                } else { isCompletingNow = true; }
+            }
+
+            let newRecord = { title, date, page: isCompletingNow ? totalPage : inputPage, isComplete: isCompletingNow, note };
+
+            if (editTargetIndex > -1) {
+                dailyRecords[editTargetIndex] = newRecord;
+            } else {
+                dailyRecords.unshift(newRecord);
+                
+                // ==========================================
+                // 💡 4. 구글 스프레드시트 연동
+                // ==========================================
+                const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyhVmZQf27W_5ekqAhsJ8I4BqOb6GMXbmYBP3GaMljFOXq6R0JiAOeO_d84hxSzowKu/exec"; 
+                
+                fetch(SCRIPT_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(newRecord)
+                }).then(res => console.log("구글 시트 저장 완료")).catch(err => console.error(err));
+            }
+
+            renderApp(); 
+            closeModal('record-modal');
+        }
+        
+        function updateHeader() {
+            const now = new Date();
+            const thisMonStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const thisComps = dailyRecords.filter(r => r.date.startsWith(thisMonStr) && r.isComplete).length;
+            let lvInfo = getLevelInfo(thisComps);
+
+            document.getElementById('total-stats').innerText = `이번 달 완독: ${thisComps}권 | ${now.getMonth() + 1}월 레벨 ${lvInfo.lv}`;
+            document.getElementById('header-avatar').innerText = lvInfo.emoji;
+        }
+
+        function changeTab(tabId, newTitle, element) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            element.classList.add('active');
+            document.getElementById('header-title').innerText = newTitle;
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
