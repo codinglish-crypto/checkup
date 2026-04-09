@@ -291,7 +291,6 @@
             updateHeader();
         }
 
-        // 💡 경로 수정 반영 (images/ 폴더로 이동)
         function getLevelInfo(completions) {
             let info;
             if (completions >= 50) info = { lv: 10, emoji: "🐲" };
@@ -307,7 +306,6 @@
 
             const availableImages = [1, 2, 3, 4, 6, 7, 8];
             if (availableImages.includes(info.lv)) {
-                // 🚀 images 폴더 경로로 수정함
                 info.imageSrc = `images/${info.lv}.png`; 
             } else {
                 info.imageSrc = null;
@@ -443,7 +441,7 @@
                 let totalBooks = globalSeriesDB[sName].length;
                 let readBooks = globalSeriesDB[sName].filter(t => bookStats[t] && bookStats[t].count > 0).length;
                 let listId = 'al-' + sIndex++;
-                container.innerHTML += `<div class="card" style="border-top:3px solid var(--secondary-color);"><div class="series-header-wrap"><strong>${sName}</strong><button class="btn-toggle-list" onclick="toggleList('${listId}', this.querySelector('.icon'))">목록 <span class="icon">🔽</span></button></div><div style="font-size:0.8em;">진행률: ${readBooks}/${totalBooks}권</div><div id="${listId}" class="series-list-container">${globalSeriesDB[sName].map(t => createBookItemHTML(t, sName)).join('')}</div></div>`;
+                container.innerHTML += `<div class="card" style="border-top:3px solid var(--secondary-color);"><div class="series-header-wrap"><strong>${sName}</strong><button class="btn-toggle-list" onclick="toggleList('${listId}', this.querySelector('.icon'))">목록 <span class="icon">🔽</span></button></div><div style="font-size:0.8em;">진행률: ${readBooks}/${totalBooks}권</div><div id="${listId}" class="series-list-container">${globalSeriesDB[sName].map(t => createBookItemHTML(t, seriesName = sName)).join('')}</div></div>`;
             }
         }
 
@@ -580,9 +578,28 @@
             const isManualChecked = document.getElementById('modal-manual-complete').checked;
             let isComplete = inputPage >= totalPage || isManualChecked;
             if (isComplete && !confirm("완독 처리할까요?")) isComplete = false;
+            
             let newRecord = { title, date, page: isComplete ? totalPage : inputPage, isComplete, note };
-            if (editTargetIndex > -1) dailyRecords[editTargetIndex] = newRecord;
-            else dailyRecords.unshift(newRecord);
+            
+            if (editTargetIndex > -1) {
+                dailyRecords[editTargetIndex] = newRecord;
+            } else {
+                dailyRecords.unshift(newRecord);
+                
+                // 🚀 불필요한 if문 삭제! 주소만 딱 한 번 넣으시면 됩니다.
+                const SCRIPT_URL = "여기에_복사한_URL을_붙여넣으세요"; 
+                
+                // 주소가 입력되어 있고 '여기에...'라는 기본 문구가 아닐 때만 전송
+                if (SCRIPT_URL.startsWith("https")) {
+                    fetch(SCRIPT_URL, {
+                        method: "POST",
+                        mode: "no-cors",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify(newRecord)
+                    }).then(res => console.log("구글 시트 저장 완료")).catch(err => console.error(err));
+                }
+            }
+            
             renderApp(); 
             closeModal('record-modal');
         }
